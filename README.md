@@ -1,7 +1,7 @@
 # react-native-appmetrica-yandex
 ##### Install
 ```sh 
-yarn add react-native-appmetrica-yandex
+yarn add https://github.com/Melber17/react-native-appmetrica-yandex.git
 ```
 1. **IOS**
 
