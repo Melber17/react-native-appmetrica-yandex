@@ -164,8 +164,16 @@ public class YandexAppmetricaModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void reportEvent(String message) {
-        YandexMetrica.reportEvent(message);
+    public void reportEvent(String message, @Nullable ReadableMap params) {
+      try {
+          if (params != null) {
+              YandexMetrica.reportEvent(message, convertMapToJson(params).toString());
+          } else {
+              YandexMetrica.reportEvent(message);
+          }
+      } catch (Exception e) {
+          Log.e(TAG, "Unable to report Yandex Mobile Metrica event: " + e);
+      }
     }
 
     @ReactMethod

@@ -29,15 +29,14 @@ RCT_EXPORT_METHOD(activateWithConfig:(NSDictionary *)config) {
     [YMMYandexMetrica activateWithConfiguration:configuration];
 }
 
-RCT_EXPORT_METHOD(reportEventWithParams:(NSString *)message params:(nullable NSDictionary *) params)
-{
-    RCTLogInfo(@"reportEvent message - %@", message);
-    [YMMYandexMetrica reportEvent:message parameters:params onFailure:NULL];
-}
-
 RCT_EXPORT_METHOD(reportEvent:(NSString *)message)
 {
     [YMMYandexMetrica reportEvent:message onFailure:NULL];
+}
+
+RCT_EXPORT_METHOD(reportEvent:(NSString *)message params:(nullable NSDictionary *) params)
+{
+    [YMMYandexMetrica reportEvent:message parameters:params onFailure:NULL];
 }
 
 RCT_EXPORT_METHOD(reportError:(NSString *)message exception:(nullable NSString *) exceptionText) {
