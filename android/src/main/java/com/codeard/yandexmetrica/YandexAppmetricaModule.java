@@ -62,79 +62,6 @@ public class YandexAppmetricaModule extends ReactContextBaseJavaModule {
         return TAG;
     }
 
-    public ECommerceScreen createScreen(ReadableMap params) {
-        ECommerceScreen screen = new ECommerceScreen().setName(params.getString("screenName")).setSearchQuery(params.getString("searchQuery"));
-        return screen;
-    }
-
-    public ECommerceProduct createProduct(ReadableMap params) {
-        ECommercePrice actualPrice = new ECommercePrice(new ECommerceAmount(Integer.parseInt(params.getString("price")), params.getString("currency")));
-        ECommerceProduct product = new ECommerceProduct(params.getString("sku")).setActualPrice(actualPrice).setName(params.getString("name"));
-        return product;
-    }
-
-    public ECommerceCartItem createCartItem(ReadableMap params) {
-        ECommerceScreen screen = this.createScreen(params);
-        ECommerceProduct product = this.createProduct(params);
-        ECommercePrice actualPrice = new ECommercePrice(new ECommerceAmount(Integer.parseInt(params.getString("price")), params.getString("currency")));
-        ECommerceReferrer referrer = new ECommerceReferrer().setScreen(screen);
-        ECommerceCartItem cartItem = new ECommerceCartItem(product, actualPrice, Integer.parseInt(params.getString("quantity"))).setReferrer(referrer);
-        return cartItem;
-    }
-
-    @ReactMethod
-    public void showScreen(ReadableMap params) {
-        ECommerceScreen screen = this.createScreen(params);
-        ECommerceEvent showScreenEvent = ECommerceEvent.showScreenEvent(screen);
-        YandexMetrica.reportECommerce(showScreenEvent);
-    }
-
-    @ReactMethod
-    public void showProductCard(ReadableMap params) {
-        ECommerceScreen screen = this.createScreen(params);
-        ECommerceProduct product = this.createProduct(params);
-        ECommerceEvent showProductCardEvent = ECommerceEvent.showProductCardEvent(product, screen);
-        YandexMetrica.reportECommerce(showProductCardEvent);
-    }
-
-    @ReactMethod
-    public void addToCart(ReadableMap params) {
-        ECommerceCartItem cartItem = this.createCartItem(params);
-        ECommerceEvent addCartItemEvent = ECommerceEvent.addCartItemEvent(cartItem);
-        YandexMetrica.reportECommerce(addCartItemEvent);
-    }
-
-    @ReactMethod
-    public void removeFromCart(ReadableMap params) {
-        ECommerceCartItem cartItem = this.createCartItem(params);
-        ECommerceEvent removeCartItemEvent = ECommerceEvent.removeCartItemEvent(cartItem);
-        YandexMetrica.reportECommerce(removeCartItemEvent);
-    }
-
-    @ReactMethod
-    public void beginCheckout(ReadableArray products, String identifier) {
-        ArrayList<ECommerceCartItem> cartItems = new ArrayList<>();
-        for (int i = 0; i < products.size(); i++) {
-            ReadableMap productData = products.getMap(i);
-            cartItems.add(this.createCartItem(productData));
-        }
-        ECommerceOrder order = new ECommerceOrder(identifier, cartItems);
-        ECommerceEvent beginCheckoutEvent = ECommerceEvent.beginCheckoutEvent(order);
-        YandexMetrica.reportECommerce(beginCheckoutEvent);
-    }
-
-    @ReactMethod
-    public void finishCheckout(ReadableArray products, String identifier) {
-        ArrayList<ECommerceCartItem> cartItems = new ArrayList<>();
-        for (int i = 0; i < products.size(); i++) {
-            ReadableMap productData = products.getMap(i);
-            cartItems.add(this.createCartItem(productData));
-        }
-        ECommerceOrder order = new ECommerceOrder(identifier, cartItems);
-        ECommerceEvent purchaseEvent = ECommerceEvent.purchaseEvent(order);
-        YandexMetrica.reportECommerce(purchaseEvent);
-    }
-
     @ReactMethod
     public void activateWithApiKey(String apiKey) {
         YandexMetricaConfig.Builder configBuilder = YandexMetricaConfig.newConfigBuilder(apiKey).withLogs();
@@ -177,11 +104,6 @@ public class YandexAppmetricaModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void reportEventWithParams(String message, @Nullable ReadableMap params) {
-        YandexMetrica.reportEvent(message, convertMapToJson(params).toString());
-    }
-
-    @ReactMethod
     public void reportError(@NonNull String message, @Nullable String exceptionError) {
         Throwable exception = null;
         if (exceptionError != null) {
@@ -214,123 +136,6 @@ public class YandexAppmetricaModule extends ReactContextBaseJavaModule {
         YandexMetrica.setUserProfileID(profileID);
     }
 
-    @ReactMethod
-    public void setUserProfileAttributes(ReadableMap params) {
-        UserProfile.Builder userProfileBuilder = UserProfile.newBuilder();
-        ReadableMapKeySetIterator iterator = params.keySetIterator();
-
-        while (iterator.hasNextKey()) {
-            String key = iterator.nextKey();
-
-            switch (key) {
-                // predefined attributes
-                case "name":
-                    userProfileBuilder.apply(
-                    params.isNull(key)
-                        ? Attribute.name().withValueReset()
-                        : Attribute.name().withValue(params.getString(key))
-                    );
-                    break;
-                case "gender":
-                    // FIXME: can't access Gender
-                    // userProfileBuilder.apply(
-                    //   params.isNull(key)
-                    //     ? Attribute.gender().withValueReset()
-                    //     : Attribute.gender().withValue(
-                    //         params.getString(key).equals("female")
-                    //           ? GenderAttribute.Gender.FEMALE
-                    //           : params.getString(key).equals("male")
-                    //             ? GenderAttribute.Gender.MALE
-                    //             : GenderAttribute.Gender.OTHER
-                    //       )
-                    // );
-                    break;
-                case "age":
-                    userProfileBuilder.apply(
-                    params.isNull(key)
-                        ? Attribute.birthDate().withValueReset()
-                        : Attribute.birthDate().withAge(params.getInt(key))
-                    );
-                    break;
-                case "birthDate":
-                    if (params.isNull(key)) {
-                        userProfileBuilder.apply(
-                        Attribute.birthDate().withValueReset()
-                        );
-                    } else if (params.getType(key) == ReadableType.Array) {
-                        // an array of [ year[, month][, day] ]
-                        ReadableArray date = params.getArray(key);
-                        if (date.size() == 1) {
-                            userProfileBuilder.apply(
-                            Attribute.birthDate().withBirthDate(
-                                date.getInt(0)
-                            )
-                            );
-                        } else if (date.size() == 2) {
-                            userProfileBuilder.apply(
-                            Attribute.birthDate().withBirthDate(
-                                date.getInt(0),
-                                date.getInt(1)
-                            )
-                            );
-                        } else {
-                            userProfileBuilder.apply(
-                            Attribute.birthDate().withBirthDate(
-                                date.getInt(0),
-                                date.getInt(1),
-                                date.getInt(2)
-                            )
-                            );
-                        }
-                    } else {
-                        // number of milliseconds since Unix epoch
-                        Date date = new Date((long)params.getInt(key));
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(date);
-                        userProfileBuilder.apply(
-                        Attribute.birthDate().withBirthDate(cal)
-                        );
-                    }
-                    break;
-                case "notificationsEnabled":
-                    userProfileBuilder.apply(
-                    params.isNull(key)
-                        ? Attribute.notificationsEnabled().withValueReset()
-                        : Attribute.notificationsEnabled().withValue(params.getBoolean(key))
-                    );
-                    break;
-                // custom attributes
-                default:
-                    // TODO: come up with a syntax solution to reset custom attributes. `null` will break type checking here
-                    switch (params.getType(key)) {
-                        case Boolean:
-                            userProfileBuilder.apply(
-                            Attribute.customBoolean(key).withValue(params.getBoolean(key))
-                            );
-                            break;
-                        case Number:
-                            userProfileBuilder.apply(
-                            Attribute.customNumber(key).withValue(params.getDouble(key))
-                            );
-                            break;
-                        case String:
-                            String value = params.getString(key);
-                            if (value.startsWith("+") || value.startsWith("-")) {
-                                userProfileBuilder.apply(
-                                Attribute.customCounter(key).withDelta(Double.parseDouble(value))
-                                );
-                            } else {
-                                userProfileBuilder.apply(
-                                Attribute.customString(key).withValue(value)
-                                );
-                            }
-                            break;
-                    }
-            }
-        }
-
-        YandexMetrica.reportUserProfile(userProfileBuilder.build());
-    }
 
 
     private JSONObject convertMapToJson(ReadableMap readableMap) {
@@ -402,4 +207,114 @@ public class YandexAppmetricaModule extends ReactContextBaseJavaModule {
     public void sendEventsBuffer() {
         YandexMetrica.sendEventsBuffer();
     }
+
+
+    ///// E-commerce
+
+    public ECommerceScreen createScreen(ReadableMap params) {
+      if (params == null) return null;
+      return new ECommerceScreen()
+              .setName(params.getString("name"))
+              .setCategoriesPath(Utils.toListString(params.getArray("categoryComponents")))
+              .setSearchQuery(params.getString("searchQuery"))
+              .setPayload(Utils.toMapString(params.getMap("payload")));
+  }
+
+  public ECommerceReferrer createReferrer(ReadableMap params) {
+      if (params == null) return null;
+      ECommerceScreen screen = this.createScreen(params.getMap("screen"));
+      return new ECommerceReferrer()
+              .setType(params.getString("type"))
+              .setIdentifier(params.getString("identifier"))
+              .setScreen(screen);
+  }
+
+  public ECommercePrice createPrice(ReadableMap params) {
+      if (params == null) return null;
+      ReadableMap fiatMap = params.getMap("fiat");
+      ECommerceAmount fiat = new ECommerceAmount(fiatMap.getDouble("value"), fiatMap.getString("currency"));
+      // TODO: internalComponents
+      return new ECommercePrice(fiat);
+  }
+
+  public ECommerceProduct createProduct(ReadableMap params) {
+      return new ECommerceProduct(params.getString("sku"))
+              .setName(params.getString("name"))
+              .setCategoriesPath(Utils.toListString(params.getArray("categoryComponents")))
+              .setPayload(Utils.toMapString(params.getMap("payload")))
+              .setActualPrice(this.createPrice(params.getMap("actualPrice")))
+              .setOriginalPrice(this.createPrice(params.getMap("originalPrice")))
+              .setPromocodes(Utils.toListString(params.getArray("promoCodes")));
+  }
+
+  public ECommerceCartItem createCartItem(ReadableMap params) {
+      ECommerceProduct product = this.createProduct(params.getMap("product"));
+      ECommercePrice revenue = this.createPrice(params.getMap("revenue"));
+      ECommerceReferrer referrer = this.createReferrer(params.getMap("referrer"));
+
+      return new ECommerceCartItem(product, revenue, params.getInt("quantity"))
+              .setReferrer(referrer);
+  }
+
+  @ReactMethod
+  public void showScreen(ReadableMap screenParams) {
+      ECommerceScreen screen = this.createScreen(screenParams);
+      ECommerceEvent showScreenEvent = ECommerceEvent.showScreenEvent(screen);
+      YandexMetrica.reportECommerce(showScreenEvent);
+  }
+
+  @ReactMethod
+  public void showProductCard(ReadableMap productParams, ReadableMap screenParams) {
+      ECommerceProduct product = this.createProduct(productParams);
+      ECommerceScreen screen = this.createScreen(screenParams);
+      ECommerceEvent showProductCardEvent = ECommerceEvent.showProductCardEvent(product, screen);
+      YandexMetrica.reportECommerce(showProductCardEvent);
+  }
+
+  @ReactMethod
+  public void showProductDetails(ReadableMap productParams, ReadableMap referrerParams) {
+      ECommerceProduct product = this.createProduct(productParams);
+      ECommerceReferrer referrer = this.createReferrer(referrerParams);
+      ECommerceEvent showProductDetailsEvent = ECommerceEvent.showProductDetailsEvent(product, referrer);
+      YandexMetrica.reportECommerce(showProductDetailsEvent);
+  }
+
+  @ReactMethod
+  public void addToCart(ReadableMap cartItemParams) {
+      ECommerceCartItem cartItem = this.createCartItem(cartItemParams);
+      ECommerceEvent addCartItemEvent = ECommerceEvent.addCartItemEvent(cartItem);
+      YandexMetrica.reportECommerce(addCartItemEvent);
+  }
+
+  @ReactMethod
+  public void removeFromCart(ReadableMap params) {
+      ECommerceCartItem cartItem = this.createCartItem(params);
+      ECommerceEvent removeCartItemEvent = ECommerceEvent.removeCartItemEvent(cartItem);
+      YandexMetrica.reportECommerce(removeCartItemEvent);
+  }
+
+  @ReactMethod
+  public void beginCheckout(ReadableArray cartItems, String identifier, ReadableMap payload) {
+      ArrayList<ECommerceCartItem> cartItemsObj = new ArrayList<>();
+      for (int i = 0; i < cartItemsObj.size(); i++) {
+          cartItemsObj.add(this.createCartItem(cartItems.getMap(i)));
+      }
+      ECommerceOrder order = new ECommerceOrder(identifier, cartItemsObj)
+              .setPayload(Utils.toMapString(payload));
+      ECommerceEvent beginCheckoutEvent = ECommerceEvent.beginCheckoutEvent(order);
+      YandexMetrica.reportECommerce(beginCheckoutEvent);
+  }
+
+  @ReactMethod
+  public void purchase(ReadableArray cartItems, String identifier, ReadableMap payload) {
+      ArrayList<ECommerceCartItem> cartItemsObj = new ArrayList<>();
+      for (int i = 0; i < cartItemsObj.size(); i++) {
+          cartItemsObj.add(this.createCartItem(cartItems.getMap(i)));
+      }
+      ECommerceOrder order = new ECommerceOrder(identifier, cartItemsObj)
+              .setPayload(Utils.toMapString(payload));
+      ECommerceEvent purchaseEvent = ECommerceEvent.purchaseEvent(order);
+      YandexMetrica.reportECommerce(purchaseEvent);
+  }
+
 }
